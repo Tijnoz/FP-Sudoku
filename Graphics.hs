@@ -1,6 +1,6 @@
 module Graphics where
 
-import FPPrac
+import Prelude
 import FPPrac.Graphics
 import FPPrac.Events
 import System.FilePath (splitPath, dropExtension)
@@ -47,15 +47,58 @@ drawField f@(Field x y s os v)
 drawBottomLine :: Store -> Picture
 drawBottomLine store 
     = Pictures []
-        
+
+-----------------------------------------------------------
+
+inField :: Field -> (Float, Float) -> Bool
+inField f@(Field fx fy s os v) (x,y) = xmin <= x && x < xmax && ymin <= y && y < ymax
+    where
+        xmin = fromIntegral $ squareLeft fx
+        xmax = xmin + 50
+        ymax = fromIntegral $ squareTop fy
+        ymin = ymax - 50
+
+onField :: [Field] -> (Float, Float) -> Maybe Field
+onField [] p = Nothing
+onField (f:fs) p
+    | inField f p = Just f
+    | otherwise   = onField fs p
+
 -----------------------------------------------------------
 -- Event handler
 handleEvent :: Store -> Input -> (Store, [Output])
+
+handleEvent store (MouseUp p) = (store, [infoPanel r, infoPanelVisible])
+    where
+        Store {board=board} = store
+        Board fields = board
+        oF = onField fields p
+        Just (Field x y s os v) = onField fields p
+        
+        r = if oF == Nothing then "Nothing"
+        else "Field " ++ (show x) ++ "," ++ (show y) ++ " sector " ++ (show s) ++ " value " ++ (show v)
+        
+handleEvent store (Panel 1000 _) = (store,[infoPanelInvisible])
 
 --- Unhandled event handler
 handleEvent store input = ah store input
     where
         Store {additionalHandler=ah} = store
+
+-----------------------------------------------------------
+
+-- Panel
+infoPanel x
+  = PanelCreate 
+    (x, 260, 45
+    ,[]
+    ,[ (1000 , "OK"      , Button     , 0  , 0 , 60, 20)
+     ]
+    )
+    
+infoPanelVisible   = PanelUpdate True  []
+infoPanelInvisible = PanelUpdate False []
+
 
 -----------------------------------------------------------
 initStore ah = Store { board = emptyBoard

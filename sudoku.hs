@@ -1,6 +1,6 @@
 module Sudoku where
 
-import FPPrac hiding (replicate)
+import Prelude hiding (replicate)
 import FPPrac.Events
 import FPPrac.Graphics
 import Data.List

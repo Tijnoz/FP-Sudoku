@@ -1,12 +1,13 @@
 module Structure where
 
-import FPPrac
+import Prelude
 
 data Board = Board [Field]
-    deriving (Show)
+    deriving (Show, Eq)
 
 --                 Col    Row    Sector  Options  Definite
-data Field = Field Number Number Number [Char] Char  
+data Field = Field Integer Integer Integer [Char] Char  
+    deriving (Eq)
 instance Show Field where
   show (Field col row sec os def) = show def
   
