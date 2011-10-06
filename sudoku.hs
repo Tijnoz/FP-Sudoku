@@ -1,34 +1,13 @@
 module Sudoku where
 
-<<<<<<< HEAD
-import FPPrac
-import FPPrac.Events
-=======
 import FPPrac hiding (replicate)
 import FPPrac.Events
 import FPPrac.Graphics
 import Data.List
->>>>>>> bf7e431d93f88f3310e3c0ad92f7fa3b852307e9
 import Debug.Trace
 import Structure
 import Graphics
 
-<<<<<<< HEAD
-    
-
-printBoard (Board fs) = [ [ fs !! ((x)+(s*3)+(i*9)) | s <-[0..2], x <- [1..3]] | i <- [0..9] ]
-
-
---setSquare (Board fs) sector position new = 
-
---getRow (Board fs) row
-
---getColomn (Board fs) col
-
---getSector (Board fs) sec
-
-
-=======
 printBoard :: Board -> IO ()
 printBoard (Board fs) = putStrLn 
                         . unlines 
@@ -70,8 +49,6 @@ secCalc col row = (col `div` 3)+(row `div` 3)*3
 
  
 ---meuk
->>>>>>> bf7e431d93f88f3310e3c0ad92f7fa3b852307e9
-
 main = doShow sudokuHandler
 
 -- Event handler
