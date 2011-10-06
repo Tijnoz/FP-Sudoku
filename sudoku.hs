@@ -25,8 +25,8 @@ setSquare (Board fs) col row new = Board (map set fs)
             = f
         
 validMove b col row new = 
-            col > 0 && col < 9 &&
-            row > 0 && row < 9 &&
+            col >= 0 && col < 9 &&
+            row >= 0 && row < 9 &&
             new `elem` allOptions &&
             not  (new `elem` (getRow b row)) &&
             not  (new `elem` (getCol b col)) &&
@@ -51,6 +51,28 @@ main = doShow sudokuHandler
 
 -- Event handler
 sudokuHandler :: Store -> Input -> (Store,[Output])
+
+
+sudokuHandler store (MouseUp p)
+    | oF == Nothing = (store, [])
+    | otherwise     = (store', [GraphPrompt ("Enter new value", "Value for field " ++ show x ++ "," ++ show y)])
+    where
+        Store {board=board} = store
+        Board fields = board
+        oF = onField fields p
+        Just (Field x y s os v) = oF
+        store' = store {clickedField=onField fields p} 
+  
+sudokuHandler store (Prompt ("Enter new value", newVal))
+    | clickedField == Nothing = (store, [])
+    | newVal /= ""            = (store', [DrawPicture $ drawBoard board'])
+    | otherwise               = (store {clickedField=Nothing}, [])
+    where
+        Store {board=board, clickedField=clickedField} = store
+        Just (Field x y s os v) = clickedField
+        board' = validSet board x y (newVal !! 0)
+        store' = store {board=board', clickedField=Nothing}
+
 
 --- Unhandled event handler
 sudokuHandler store _ = (store,[])

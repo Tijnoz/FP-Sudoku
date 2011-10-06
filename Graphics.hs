@@ -10,12 +10,18 @@ import Data.List
 data Store = Store
   { board             :: Board
   , additionalHandler :: Store -> Input -> (Store,[Output])
+  , clickedField      :: Maybe Field
   }
 
 boardTop = 250
 boardLeft = (-230)
 squareTop y = (y * (-50) + boardTop)
 squareLeft x = (x * 50 + boardLeft)
+
+initStore ah = Store { board = emptyBoard
+                     , additionalHandler = ah
+                     , clickedField = Nothing
+                     }
   
 -----------------------------------------------------------
 -- Draws one field
@@ -37,7 +43,7 @@ drawLines
 drawField :: Field -> Picture
 drawField f@(Field x y s os v)
     = Pictures
-        [ Translate (x'+17) (y'-40) $ Scale 0.2 0.2 $ Text [v]
+        [ Translate (x'+17) (y'-38) $ Scale 0.2 0.2 $ Text [v]
         , Translate (x'+1) (y'-10) $ Scale 0.07 0.07 $ Text os
         ]
     where
@@ -68,17 +74,17 @@ onField (f:fs) p
 -- Event handler
 handleEvent :: Store -> Input -> (Store, [Output])
 
-handleEvent store (MouseUp p) = (store, [infoPanel r, infoPanelVisible])
-    where
-        Store {board=board} = store
-        Board fields = board
-        oF = onField fields p
-        Just (Field x y s os v) = onField fields p
-        
-        r = if oF == Nothing then "Nothing"
-        else "Field " ++ (show x) ++ "," ++ (show y) ++ " sector " ++ (show s) ++ " value " ++ (show v)
-        
-handleEvent store (Panel 1000 _) = (store,[infoPanelInvisible])
+--handleEvent store (MouseUp p) = (store, [infoPanel r, infoPanelVisible])
+--    where
+--        Store {board=board} = store
+--        Board fields = board
+--        oF = onField fields p
+--        Just (Field x y s os v) = onField fields p
+--       
+--        r = if oF == Nothing then "Nothing"
+--        else "Field " ++ (show x) ++ "," ++ (show y) ++ " sector " ++ (show s) ++ " value " ++ (show v)
+--        
+--handleEvent store (Panel 1000 _) = (store,[infoPanelInvisible])
 
 --- Unhandled event handler
 handleEvent store input = ah store input
@@ -101,9 +107,6 @@ infoPanelInvisible = PanelUpdate False []
 
 
 -----------------------------------------------------------
-initStore ah = Store { board = emptyBoard
-                     , additionalHandler = ah
-                     }
 
 doShow ah = installEventHandler "U Kudos (tm)" handleEvent store startPic 10
     where
