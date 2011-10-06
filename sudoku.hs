@@ -19,11 +19,7 @@ setSquare (Board fs) col row new = Board (map set fs)
         set f@(Field c r sec os def) 
             | c == col && r == row
             = (Field col row sec [] new)
-            | c == col
-            = (Field c r sec (delete new os) def)
-            | r == row
-            = (Field c r sec (delete new os) def)
-            | sec == (secCalc col row)
+            | c == col || r == row || sec == (secCalc col row)
             = (Field c r sec (delete new os) def)
             | otherwise
             = f
@@ -44,7 +40,7 @@ getRow (Board fs) row = [ d | f@(Field c r s o d)<-fs, r==row ]
 getCol (Board fs) col = [ d | f@(Field c r s o d)<-fs, c==col ]
 getSec (Board fs) sec = [ d | f@(Field c r s o d)<-fs, s==sec ]
 
-secCalc col row = (col `div` 3)+(row `div` 3)*3
+
 
 
  
