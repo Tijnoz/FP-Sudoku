@@ -12,4 +12,8 @@ instance Show Field where
   
   
 allOptions = ['1','2','3','4','5','6','7','8','9'] 
+<<<<<<< HEAD
 emptyBoard = Board [ Field col row ((col/3)+(row/3)*3) allOptions '.' | col <- [0..8], row <- [0..8]]
+=======
+emptyBoard = Board [ Field col row ((col/3)+(row/3)*3) allOptions '8' | col <- [0..8], row <- [0..8]]
+>>>>>>> bf7e431d93f88f3310e3c0ad92f7fa3b852307e9
