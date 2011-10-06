@@ -12,6 +12,6 @@ instance Show Field where
   
   
 allOptions = ['1','2','3','4','5','6','7','8','9'] 
-emptyBoard = Board [ Field col row (secCalc col row) allOptions '.' | col <- [0..8], row <- [0..8]]
+emptyBoard = Board [ Field col row (secCalc col row) allOptions ' ' | col <- [0..8], row <- [0..8]]
 
 secCalc col row = (col `div` 3)+(row `div` 3)*3

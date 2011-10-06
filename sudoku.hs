@@ -41,7 +41,9 @@ getCol (Board fs) col = [ d | f@(Field c r s o d)<-fs, c==col ]
 getSec (Board fs) sec = [ d | f@(Field c r s o d)<-fs, s==sec ]
 
 
-
+solve b@(Board fs) = newBoard
+    where
+        newBoard = fs
 
  
 ---meuk
