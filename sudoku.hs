@@ -14,15 +14,18 @@ printBoard (Board fs) = putStrLn
                         $ [ unwords $ [ " "++[def] | f@(Field col row sec os def)<-fs, col==c ] | c <- [0..8] ]
 hLine = replicate 9 '-'
 
-setSquare (Board fs) col row new = Board (map set fs)
+setSquare (Board fs) col row new = updateOptions (Board (map set fs))
     where
         set f@(Field c r sec os def) 
             | c == col && r == row
             = (Field col row sec [] new)
-            | c == col || r == row || sec == (secCalc col row)
-            = (Field c r sec (delete new os) def)
             | otherwise
             = f
+            
+updateOptions b@(Board fs) = (Board (map (updateOption b) fs))
+updateOption b (Field c r sec os def) = (Field c r sec os' def) 
+    where
+        os' = allOptions \\ (getCol b c `union` (getRow b r) `union` (getSec b sec))
         
 validMove b col row new = 
             col >= 0 && col < 9 &&
@@ -40,18 +43,18 @@ getRow (Board fs) row = [ d | f@(Field c r s o d)<-fs, r==row ]
 getCol (Board fs) col = [ d | f@(Field c r s o d)<-fs, c==col ]
 getSec (Board fs) sec = [ d | f@(Field c r s o d)<-fs, s==sec ]
 
-
 solve b@(Board fs) = newBoard
     where
-        newBoard = fs
+        fs' = sort(fs)
+        fst = findFirstUnsolved
+        newBoard = (Board fs')
 
- 
+findFirstUnsolved (f@(Field _ _ _ os _):fs) = if (not (null os)) then f else findFirstUnsolved fs
 ---meuk
 main = doShow sudokuHandler
 
 -- Event handler
 sudokuHandler :: Store -> Input -> (Store,[Output])
-
 
 sudokuHandler store (MouseUp p)
     | oF == Nothing = (store, [])
@@ -72,7 +75,6 @@ sudokuHandler store (Prompt ("Enter new value", newVal))
         Just (Field x y s os v) = clickedField
         board' = validSet board x y (newVal !! 0)
         store' = store {board=board', clickedField=Nothing}
-
 
 --- Unhandled event handler
 sudokuHandler store _ = (store,[])

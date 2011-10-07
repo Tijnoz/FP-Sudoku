@@ -10,6 +10,8 @@ data Field = Field Integer Integer Integer [Char] Char
     deriving (Eq)
 instance Show Field where
   show (Field col row sec os def) = show def
+instance Ord Field where
+  compare (Field _ _ _ osa _) (Field _ _ _ osb _) = length osa `compare` (length osb)
   
   
 allOptions = ['1','2','3','4','5','6','7','8','9'] 
