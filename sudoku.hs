@@ -70,9 +70,16 @@ sudokuHandler store (Prompt ("Enter new value", newVal))
     where
         Store {board=board, clickedField=clickedField} = store
         Just (Field x y s os v) = clickedField
+        
         board' = validSet board x y (newVal !! 0)
         store' = store {board=board', clickedField=Nothing}
-
+        
+sudokuHandler store (File filename (TXTFile input))
+    | input /= "" = (store', [DrawPicture $ Pictures [drawBoard board', drawBottomLine store]])
+    | otherwise   = (store,[])
+    where
+        board' = readBoard input
+        store' = store {board=board',name=filename}
 
 --- Unhandled event handler
 sudokuHandler store _ = (store,[])
