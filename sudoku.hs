@@ -58,23 +58,45 @@ sudokuHandler :: Store -> Input -> (Store,[Output])
 
 sudokuHandler store (MouseUp p)
     | oF == Nothing = (store, [])
-    | otherwise     = (store', [GraphPrompt ("Enter new value", "Value for field " ++ show x ++ "," ++ show y)])
+    | otherwise     = (store', [DrawPicture $ drawBottomLine store']) 
+                                   --[GraphPrompt ("Enter new value", "Value for field " ++ show x ++ "," ++ show y)])
     where
         Store {board=board} = store
         Board fields = board
         oF = onField fields p
         Just (Field x y s os v) = oF
-        store' = store {clickedField=onField fields p} 
-  
-sudokuHandler store (Prompt ("Enter new value", newVal))
-    | clickedField == Nothing = (store, [])
-    | newVal /= ""            = (store', [DrawPicture $ drawBoard board'])
-    | otherwise               = (store {clickedField=Nothing}, [])
+        store' = store {clickedField=onField fields p, process=EnteringValue} 
+        
+sudokuHandler store@(Store {process=EnteringValue}) (KeyIn newVal)
+    | clickedField /= Nothing && newVal `elem` allOptions = (store', [DrawPicture $ redraw store'])
+    | otherwise                                           = (store'', [DrawPicture $ drawBottomLine store''])
     where
         Store {board=board, clickedField=clickedField} = store
-        Just (Field x y s os v) = clickedField
-        board' = validSet board x y (newVal !! 0)
-        store' = store {board=board', clickedField=Nothing}
+        Just (Field x y s os v) = clickedField       
+        board' = validSet board x y newVal
+        store' = if board == board'
+                 then store {board=board', clickedField=Nothing, process=DoingNothing, errorMsg="Invalid move: " ++ [newVal]}
+                 else store {board=board', clickedField=Nothing, process=DoingNothing, errorMsg=""}
+        
+        store'' = store {clickedField=Nothing, process=DoingNothing, errorMsg="Invalid value: " ++ [newVal]}
+  
+--sudokuHandler store (Prompt ("Enter new value", newVal))
+--    | clickedField == Nothing = (store, [])
+--    | newVal /= ""            = (store', [DrawPicture $ redraw store'])
+--    | otherwise               = (store {clickedField=Nothing}, [])
+--    where
+--        Store {board=board, clickedField=clickedField} = store
+--        Just (Field x y s os v) = clickedField
+--        
+--        board' = validSet board x y (newVal !! 0)
+--        store' = store {board=board', clickedField=Nothing, process=DoingNothing, errorMsg=""}
+        
+sudokuHandler store (File filename (TXTFile input))
+    | input /= "" = (store', [DrawPicture $ redraw store'])
+    | otherwise   = (store,[])
+    where
+        board' = readBoard input
+        store' = store {board=board', name=filename, process=DoingNothing, errorMsg=""}
 
 --- Unhandled event handler
 sudokuHandler store _ = (store,[])
