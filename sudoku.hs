@@ -25,7 +25,9 @@ setSquare (Board fs) col row new = updateOptions (Board (map set fs))
 updateOptions b@(Board fs) = (Board (map (updateOption b) fs))
 updateOption b (Field c r sec os def) = (Field c r sec os' def) 
     where
-        os' = allOptions \\ (getCol b c `union` (getRow b r) `union` (getSec b sec))
+        os' = if def `elem` allOptions 
+              then []
+              else allOptions \\ (getCol b c `union` (getRow b r) `union` (getSec b sec))
         
 validMove b col row new = 
             col >= 0 && col < 9 &&
@@ -43,19 +45,41 @@ getRow (Board fs) row = [ d | f@(Field c r s o d)<-fs, r==row ]
 getCol (Board fs) col = [ d | f@(Field c r s o d)<-fs, c==col ]
 getSec (Board fs) sec = [ d | f@(Field c r s o d)<-fs, s==sec ]
 
-solve b@(Board fs) = newBoard
+
+solve :: Board -> [Board]
+solve b@(Board fs)
+    | completeBoard fs = [b]
+    | unsolvable fs    = []
+    | length os == 1   = solve (validSet b col row (os !! 0))
+    | otherwise        = trace "Backtracking." $ concat $ map (solve . (validSet b col row)) os
     where
         fs' = sort(fs)
-        fst = findFirstUnsolved
-        newBoard = (Board fs')
+        (Field col row sec os def) = findFirstUnsolved fs'
+      
 
 findFirstUnsolved (f@(Field _ _ _ os _):fs) = if (not (null os)) then f else findFirstUnsolved fs
+
+completeBoard [] = True
+completeBoard ((Field _ _ _ _ def):fs) = not (def == ' ') && (completeBoard fs)
+
+-- Board is dus niet complete.
+unsolvable [] = False
+unsolvable ((Field _ _ _ os def):fs)   =  (os == [] && def == ' ')|| (unsolvable fs)
+
 ---meuk
 main = doShow sudokuHandler
 
 -- Event handler
 sudokuHandler :: Store -> Input -> (Store,[Output])
 
+sudokuHandler store (KeyIn 'o') = (store', [DrawPicture $ redraw store'])
+    where
+        Store {board=board} = store
+        sB = solve board
+        board' = if not (null sB) then sB !! 0 else board 
+        err = if not (null sB) then "" else "There is no solution."
+        store' = store {board=board', process=DoingNothing, errorMsg=err } 
+        
 sudokuHandler store (MouseUp p)
     | oF == Nothing = (store, [])
     | otherwise     = (store', [DrawPicture $ drawBottomLine store']) 
@@ -95,7 +119,7 @@ sudokuHandler store (File filename (TXTFile input))
     | input /= "" = (store', [DrawPicture $ redraw store'])
     | otherwise   = (store,[])
     where
-        board' = readBoard input
+        board' = updateOptions $ readBoard input
         store' = store {board=board', name=filename, process=DoingNothing, errorMsg=""}
 
 --- Unhandled event handler

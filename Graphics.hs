@@ -76,8 +76,8 @@ drawBottomLine store
       , Color black $ Line [(-240,height1),(-240,-300)]
       , Color black $ Line [(100,height1),(100,-300)]
       , Translate (-392) height2 $ Color red   $ Scale 0.11 0.11 $ Text $ (name store)
-      , Translate (-235) height2 $ Color black $ Scale 0.11 0.11 $ Text "[n]ew; [s]ave; [S]ave as; [l]oad"
-      , if (process store) == DoingNothing && not (null (errorMsg store))
+      , Translate (-235) height2 $ Color black $ Scale 0.11 0.11 $ Text "[n]ew; [s]ave; [S]ave as; [l]oad; s[o]lve"
+      , if not (null (errorMsg store)) -- (process store) == DoingNothing && 
            then Translate 120 height2 $ Color red   $ Scale 0.11 0.11 $ Text (errorMsg store)
            else Translate 120 height2 $ Color black $ Scale 0.11 0.11 $ Text actionText
       ]
