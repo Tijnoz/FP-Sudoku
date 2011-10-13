@@ -7,6 +7,7 @@ import Data.List
 import Debug.Trace
 import Structure
 import Graphics
+import System.CPUTime
 
 printBoard :: Board -> IO ()
 printBoard (Board fs) = putStrLn 
@@ -23,48 +24,63 @@ setSquare (Board fs) col row new = updateOptions (Board (map set fs))
             = f
             
 updateOptions b@(Board fs) = (Board (map (updateOption b) fs))
-updateOption b (Field c r sec os def) = (Field c r sec os' def) 
+
+updateOption b (Field c r s os ' ') = (Field c r s os' ' ') 
     where
-        os' = if def `elem` allOptions 
-              then []
-              else allOptions \\ (getCol b c `union` (getRow b r) `union` (getSec b sec))
+        -- Basic exclusions
+        os1 = allOptions \\ (getColD b c `union` (getRowD b r) `union` (getSecD b s)) 
+        -- Basic singleton (+23s op hardest...
+        sec = (getSec b s)
+        secOs = aggOptions sec
+        singleton = (os1 \\ secOs)
+        os' = if not (null singleton)
+              then singleton
+              else os1
+              
+updateOption b (Field c r s os def) = (Field c r s [] def)              
+    
+-- union on all fields
+aggOptions [] = []
+aggOptions ((Field c r sec os def):fs) = os `union` (aggOptions fs)
         
 validMove b col row new = 
             col >= 0 && col < 9 &&
             row >= 0 && row < 9 &&
             new `elem` allOptions &&
-            not  (new `elem` (getRow b row)) &&
-            not  (new `elem` (getCol b col)) &&
-            not  (new `elem` (getSec b (secCalc col row))) 
+            not  (new `elem` (getRowD b row)) &&
+            not  (new `elem` (getColD b col)) &&
+            not  (new `elem` (getSecD b (secCalc col row))) 
 
 validSet b col row new = if validMove b col row new 
                          then setSquare b col row new
                          else b
+                         
+getRow (Board fs) row = [ f | f@(Field c r s o d)<-fs, r==row ]
+getCol (Board fs) col = [ f | f@(Field c r s o d)<-fs, c==col ]
+getSec (Board fs) sec = [ f | f@(Field c r s o d)<-fs, s==sec ]
             
-getRow (Board fs) row = [ d | f@(Field c r s o d)<-fs, r==row ]
-getCol (Board fs) col = [ d | f@(Field c r s o d)<-fs, c==col ]
-getSec (Board fs) sec = [ d | f@(Field c r s o d)<-fs, s==sec ]
+getRowD (Board fs) row = [ d | f@(Field c r s o d)<-fs, r==row ]
+getColD (Board fs) col = [ d | f@(Field c r s o d)<-fs, c==col ]
+getSecD (Board fs) sec = [ d | f@(Field c r s o d)<-fs, s==sec ]
 
 
 solve :: Board -> [Board]
 solve b@(Board fs)
     | completeBoard fs = [b]
     | unsolvable fs    = []
-    | length os == 1   = solve (validSet b col row (os !! 0))
-    | otherwise        = trace "Backtracking." $ concat $ map (solve . (validSet b col row)) os
+    | length os == 1   = solve (validSet b col row (head os))
+    | otherwise        = concat $ map (solve . (validSet b col row)) os
     where
         fs' = sort(fs)
         (Field col row sec os def) = findFirstUnsolved fs'
       
-
 findFirstUnsolved (f@(Field _ _ _ os _):fs) = if (not (null os)) then f else findFirstUnsolved fs
 
 completeBoard [] = True
 completeBoard ((Field _ _ _ _ def):fs) = not (def == ' ') && (completeBoard fs)
 
--- Board is dus niet complete.
 unsolvable [] = False
-unsolvable ((Field _ _ _ os def):fs)   =  (os == [] && def == ' ')|| (unsolvable fs)
+unsolvable ((Field _ _ _ os def):fs)   =  (os == [] && def == ' ') || (unsolvable fs)
 
 ---meuk
 main = doShow sudokuHandler
@@ -75,9 +91,9 @@ sudokuHandler :: Store -> Input -> (Store,[Output])
 sudokuHandler store (KeyIn 'o') = (store', [DrawPicture $ redraw store'])
     where
         Store {board=board} = store
-        sB = solve board
-        board' = if not (null sB) then sB !! 0 else board 
-        err = if not (null sB) then "" else "There is no solution."
+        sB    = solve board
+        board' = if not (null sB) then head sB else board 
+        err = if not (null sB)  then "" else "There is no solution."
         store' = store {board=board', process=DoingNothing, errorMsg=err } 
         
 sudokuHandler store (MouseUp p)

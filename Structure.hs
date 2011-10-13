@@ -7,9 +7,9 @@ data Board = Board [Field]
 
 --                 Col    Row    Sector  Options  Definite
 data Field = Field Integer Integer Integer [Char] Char  
-    deriving (Eq)
-instance Show Field where
-  show (Field col row sec os def) = show def
+    deriving (Show, Eq)
+--instance Show Field where
+ -- show (Field col row sec os def) = show def
 instance Ord Field where
   compare (Field ca ra _ osa _) (Field cb rb _ osb _) = if length osa == (length osb)
                                                     then ra `compare` rb 
