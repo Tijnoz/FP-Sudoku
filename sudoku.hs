@@ -96,13 +96,19 @@ updateFields b [] = b
 --- the following is only for empty fields
 updateFields b@(Board cfs t) (f@(Field c r s os ' '):fs) = updateFields (Board cfs' t) fs 
     where
-        -- Basic exclusions Haal alle opties weg die al in de kolom; rij of box staan.
-        os1 = possibles b f os
-        -- Basic singleton (+23s op hardest...) Als er maar 1 plek is voor een getal, maar er ook andere opties staan, moet dit getal w
-        os2 = singles (delete f (getSec b s)) os1
-        os3 = singles (delete f (getCol b c)) os2
-        os4 = singles (delete f (getRow b r)) os3
-        os' = if t == Cross then singles (delete f (getDia b (diaCalc c r))) os4 else os4
+        os' = 
+        -- 2b. Additional singleton for cross Sudoku.
+                (singlesCond (t == Cross) (delete f (getDia b (diaCalc c r))))
+        -- 2a. Basic singleton. When there's only one spot for a value in a r/c/s,
+        --     but there are more possibilities for this spot, that value is the
+        --     possibility for this spot.
+              . (singles (delete f (getSec b s)))
+              . (singles (delete f (getCol b c)))
+              . (singles (delete f (getRow b r)))
+        -- 1.  Basic exclusions. Remove all options already in column, sector or row 
+              . (possibles b f)
+              $ os
+        
         
         -- Update board with new field
         f' = (Field c r s os' ' ') 
@@ -129,9 +135,12 @@ singles fs os
     where
         secOs = aggOptions fs
         os'   = (os \\ secOs)
-              
-           
-    
+
+-- Additional singles method that only executes when t is true
+singlesCond :: Bool -> [Field] -> [Char] -> [Char]
+singlesCond t fs os
+   | t         = singles fs os
+   | otherwise = os
 
 -- Solves a board
 -- May backtrack in the case that there are more then one option for a particular field
