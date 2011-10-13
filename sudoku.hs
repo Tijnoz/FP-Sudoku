@@ -15,6 +15,8 @@ printBoard (Board fs t) = putStrLn
                         $ [ unwords $ [ " "++[def] | f@(Field col row sec os def)<-fs, col==c ] | c <- [0..8] ]
 hLine = replicate 9 '-'
 
+-----------------------------------------------------------
+
 -- Sets a square at the board, without checking anything.
 setSquare :: Board -> Integer -> Integer -> Char -> Board
 setSquare (Board fs t) col row new = updateOptions (Board (map set fs) t)
@@ -33,12 +35,20 @@ validMove b@(Board _ t) col row new = col >= 0 && col < 9 &&               -- co
                                       not  (new `elem` (getSecD b (secCalc col row))) && -- not already in sector
                                       (t /= Cross || not (new `elem` (getDiaD b (diaCalc col row)))) -- not already in diagonal (if board type is Cross)
 
+-- Check if given type change is possible for the given board
+validTypeChange :: Board -> Taip -> Bool
+validTypeChange b@(Board _ t) t' 
+    | t' == Cross = dia1 == nub (dia1) && (dia2) == nub (dia2) -- no duplicates in each dia
+    | otherwise   = True
+    where
+        dia1 = filter (/=' ') $ getDiaD b 1
+        dia2 = filter (/=' ') $ getDiaD b 2
+                                      
 -- Does a move when the move is valid, otherwise returns the unaltered board
 validSet :: Board -> Integer -> Integer -> Char -> Board
 validSet b col row new = if validMove b col row new 
                          then setSquare b col row new
                          else b
-                         
                          
 -- Several get methods
 --- Get field given coordinates
@@ -56,9 +66,10 @@ getSec :: Board -> Integer -> [Field]
 getSec (Board fs t) sec = [ f | f@(Field _ _ s _ _)<-fs, s==sec ]
 ---- Dia 1 is upper left to lower right, Dia 2 is upper right to lower left
 getDia :: Board -> Integer -> [Field]
-getDia (Board fs t) dia = [ f | f@(Field c r _ _ _)<-fs, case (t, dia) of (Cross, 1) -> c == r
-                                                                          (Cross, 2) -> (c+r) == 8 
-                                                                          (_,_)      -> False ]
+getDia (Board fs t) dia = [ f | f@(Field c r _ _ _)<-fs, case dia of 1 -> c == r
+                                                                     2 -> (c+r) == 8 
+                                                                     3 -> c == r || (c+r) == 8
+                                                                     _ -> False ]
 --- Gets all definitives of the given column, row, sector or diagonal
 getColD :: Board -> Integer -> [Char]
 getColD (Board fs t) col = [ d | f@(Field c _ _ _ d)<-fs, c==col ]
@@ -67,15 +78,18 @@ getRowD (Board fs t) row = [ d | f@(Field _ r _ _ d)<-fs, r==row ]
 getSecD :: Board -> Integer -> [Char]
 getSecD (Board fs t) sec = [ d | f@(Field _ _ s _ d)<-fs, s==sec ]
 getDiaD :: Board -> Integer -> [Char]
-getDiaD (Board fs t) dia = [ d | f@(Field c r _ _ d)<-fs, case (t, dia) of (Cross, 1) -> c == r
-                                                                           (Cross, 2) -> (c+r) == 8 
-                                                                           (_,_)      -> False ]
+getDiaD (Board fs t) dia = [ d | f@(Field c r _ _ d)<-fs, case dia of 1 -> c == r
+                                                                      2 -> (c+r) == 8 
+                                                                      3 -> c == r || (c+r) == 8
+                                                                      _ -> False ]
 
 -- Union on all field options of the given fields
 aggOptions :: [Field] -> [Char]
 aggOptions [] = []
 aggOptions ((Field c r sec os def):fs) = os `union` (aggOptions fs)
- 
+
+-----------------------------------------------------------
+
 -- Updates all options of the board
 updateOptions :: Board -> Board
 updateOptions b@(Board fs _)
@@ -188,9 +202,10 @@ unsolvable ((Field _ _ _ os def):fs)   =  (os == [] && def == ' ') || (unsolvabl
 resetOptions :: Board -> Board
 resetOptions b@(Board fs t) = (Board [ (Field c r s allOptions def) | (Field c r s _ def) <- fs ] t)
 
-------------------------------------------------
+
+-----------------------------------------------------------
 -- End of game logic, start of application logic
-------------------------------------------------
+-----------------------------------------------------------
 main = doShow sudokuHandler
 
 -- Event handler
@@ -202,7 +217,7 @@ sudokuHandler store (KeyIn 'o') = (store', [DrawPicture $ redraw store'])
         Store {board=board} = store
         sB = solve board
         board' = if not (null sB) then head sB else board 
-        err = if not (null sB) then if null . tail $ sB then "" else "There's more than one solution." else "There is no solution."
+        err = if not (null sB) then if null $ tail sB then "" else "There's more than one solution." else "There is no solution."
         store' = store {board=board', process=DoingNothing, errorMsg=err} 
 
 --- Hint
@@ -214,11 +229,20 @@ sudokuHandler store (KeyIn 'h') = (store', [DrawPicture $ redraw store'])
         store' = store {board=board', process=DoingNothing, errorMsg=err} 
         
 --- Toggle X-Sudoku
-sudokuHandler store (KeyIn 'x') = (store', [DrawPicture $ redraw store'])
+sudokuHandler store (KeyIn 'x')
+    | possible  = (store', [DrawPicture $ redraw store'])
+    | otherwise = (store'', [DrawPicture $ drawBottomLine store''])
     where
-        Store {board=(Board fs t)} = store
-        board' = updateOptions . resetOptions $ Board fs (if t == Cross then Normal else Cross)
+        Store {board=board@(Board fs t)} = store
+        type' = (if t == Cross then Normal else Cross)
+        possible = validTypeChange board type'
+        
+        -- If possible
+        board' = updateOptions . resetOptions $ Board fs type'
         store' = store {board=board', process=DoingNothing, errorMsg=""} 
+        
+        -- If not possible
+        store'' = store {clickedField=Nothing, process=DoingNothing, errorMsg="Type change not possible."}
 
 --- Handle entered value
 sudokuHandler store@(Store {process=EnteringValue}) (KeyIn newVal)

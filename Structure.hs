@@ -33,4 +33,4 @@ secCalc col row = (col `div` 3)+(row `div` 3)*3
 -- Retrieve the diagonal based on a col and a row number
 -- Left-to-Right = 1, Right-To-Left = 2, otherwise = 0
 diaCalc :: Integer -> Integer -> Integer
-diaCalc col row = if col == row then 1 else if (col+row) == 8 then 2 else 0
+diaCalc col row = if col == 4 && row == 4 then 3 else if col == row then 1 else if (col+row) == 8 then 2 else 0

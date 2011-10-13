@@ -209,7 +209,7 @@ handleEvent store (MouseUp p)
         Board fields t = board
         oF = onField fields p
         Just (Field x y s os v) = oF
-        store' = store {clickedField=onField fields p, process=EnteringValue} 
+        store' = store {clickedField=onField fields p, process=EnteringValue, errorMsg=""} 
 
 --- Unhandled event handler
 handleEvent store input = ah store input
