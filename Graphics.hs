@@ -17,6 +17,7 @@ data Store = Store
   , clickedField      :: Maybe Field
   , process           :: Process
   , errorMsg          :: String
+  , showOptions       :: Bool
   }
 
 boardTop = 250
@@ -30,19 +31,20 @@ initStore ah = Store { board = emptyBoard
                      , clickedField = Nothing
                      , process = DoingNothing
                      , errorMsg = ""
+                     , showOptions = False
                      }
   
 -----------------------------------------------------------
 redraw :: Store -> Picture
-redraw store = Pictures $ [drawBoard (board store), drawBottomLine store]
+redraw store = Pictures $ [drawBoard (showOptions store) (board store), drawBottomLine store]
 
 -- Draws the entire board
-drawBoard :: Board -> Picture
-drawBoard (Board fields t)
+drawBoard :: Bool -> Board -> Picture
+drawBoard h board@(Board fields t)
     = Pictures $
         Color white (rectangleSolid 800 564)
-      : drawLines
-      : (map drawField fields)
+      : (map (drawField h board) fields)
+      ++ [drawLines]
 
 -- Draws all outer lines
 drawLines :: Picture
@@ -54,11 +56,17 @@ drawLines
       ++ [ Line [(boardLeft, squareTop (y*3) + 1), (boardLeft+9*50, squareTop (y*3) + 1)] | y <- [1..2] ]
 
 -- Draws the contents of one field
-drawField :: Field -> Picture
-drawField f@(Field x y s os v)
+drawField :: Bool -> Board -> Field -> Picture
+drawField h b@(Board _ t) f@(Field x y s os v)
     = Pictures
-        [ Translate (x'+17) (y'-38) $ Scale 0.2 0.2 $ Text [v]
-        , Translate (x'+1) (y'-10) $ Scale 0.07 0.07 $ Text os
+        [ Translate (x'+25) (y'-25) $ Color (if t == Cross && (x == y || (x+y)==8)
+                                             then (makeColor 0.8 0.8 0.8 1.0) 
+                                             else (if s `mod` 2 == 0 
+                                                   then makeColor 0.95 0.95 0.95 1.0 
+                                                   else white))
+                                            $ rectangleSolid 50 50
+        , Translate (x'+17) (y'-38) $ Scale 0.2 0.2 $ Text [v]
+        , Translate (x'+1) (y'-10) $ Scale 0.07 0.07 $ Text (if h then os else "")
         ]
     where
         x' = fromIntegral $ squareLeft x
@@ -72,14 +80,14 @@ drawBottomLine :: Store -> Picture
 drawBottomLine store 
     = Pictures 
       [ Translate 0 (-300 + bottomLineHeight / 2) $ Color white $ rectangleSolid 800 bottomLineHeight
-      , Color black $ Line [(-400,height1),(400,height1)]
-      , Color black $ Line [(-240,height1),(-240,-300)]
-      , Color black $ Line [(100,height1),(100,-300)]
-      , Translate (-392) height2 $ Color red   $ Scale 0.11 0.11 $ Text $ (name store)
-      , Translate (-235) height2 $ Color black $ Scale 0.11 0.11 $ Text "[n]ew; [s]ave; [S]ave as; [l]oad; s[o]lve; [h]int"
+      , Color black $ Line [(-400,height1),(400,height1)] -- top
+      , Color black $ Line [(-300,height1),(-300,-300)] -- left
+      , Color black $ Line [(140,height1),(140,-300)] -- right
+      , Translate (-394) height2 $ Color red   $ Scale 0.11 0.11 $ Text $ (name store)
+      , Translate (-290) height2 $ Color black $ Scale 0.11 0.11 $ Text "[n]ew [s]ave (a[S]) [l]oad s[o]lve [h]int [x]sudoku op[t]ions"
       , if not (null (errorMsg store)) -- (process store) == DoingNothing && 
-           then Translate 120 height2 $ Color red   $ Scale 0.11 0.11 $ Text (errorMsg store)
-           else Translate 120 height2 $ Color black $ Scale 0.11 0.11 $ Text actionText
+           then Translate 150 height2 $ Color red   $ Scale 0.11 0.11 $ Text (errorMsg store)
+           else Translate 150 height2 $ Color black $ Scale 0.11 0.11 $ Text actionText
       ]
     where
         height1 = -300 + bottomLineHeight
@@ -94,8 +102,9 @@ drawBottomLine store
 
 -- Reads a board from a string
 readBoard :: String -> Board
-readBoard vs = Board (readBoardR vs 0 0) Normal
+readBoard vs = Board (readBoardR (tail . dropWhile (/='\n') $ vs) 0 0) (if (head . lines $ vs) == "cross" then Cross else Normal)
 
+-- String is remainder, c is next column, r is next row
 readBoardR :: String -> Integer -> Integer -> [Field]
 readBoardR []        _ _ = []
 readBoardR ('\n':vs) _ r = readBoardR vs 0 (r+1)  -- \n is newline => new row
@@ -104,13 +113,15 @@ readBoardR (v:vs)    c r = (Field c r (secCalc c r) allOptions v) : (readBoardR 
 
 -- Normalizes a board to a string
 writeBoard :: Board -> String
-writeBoard (Board fs t) = unlines $ [
-                            concat $ [
-                                [ v | f@(Field c r s os v) <- fs, c == cs, r == rs ]
-                                | cs <- [0,1..m] 
-                            ]
-                            | rs <- [0,1..m]
-                        ]
+writeBoard (Board fs t) = (if t == Cross then "cross\n" else "normal\n")
+                          ++
+                          (unlines $ [
+                              concat $ [
+                                  [ v | f@(Field c r s os v) <- fs, c == cs, r == rs ]
+                                  | cs <- [0,1..m] 
+                              ]
+                              | rs <- [0,1..m]
+                          ])
     where
         m = ceiling (sqrt (fromIntegral . length $ fs)) - 1
 
@@ -136,12 +147,21 @@ onField (f:fs) p
 -- Event handler
 handleEvent :: Store -> Input -> (Store, [Output])
 
+--- Toggle options
+handleEvent store (KeyIn 't') = (store', [DrawPicture $ redraw store'])
+    where
+        Store {showOptions=showOptions} = store
+        store' = store {process=DoingNothing, errorMsg="", showOptions=(not showOptions)}
+
+
 --- Create new Sudoku board
 handleEvent store (KeyIn 'n')
     = (store', [DrawPicture $ (redraw store')])
     where
-        board' = emptyBoard
-        store' = store {board=board', process=DoingNothing, errorMsg=""}
+        Store {board=(Board _ t)} = store
+        (Board fs _) = emptyBoard
+        board' = Board fs t
+        store' = store {board=board', name="", process=DoingNothing, errorMsg=""}
 
 --- Load Sudoku board
 handleEvent store (KeyIn 'l')
@@ -218,6 +238,6 @@ doShow ah = installEventHandler "U Kudos (tm)" handleEvent store startPic 10
         store = initStore ah
         Store {board=board} = store
         startPic = Pictures
-          [ drawBoard board
+          [ drawBoard False board
           , drawBottomLine store
           ]
