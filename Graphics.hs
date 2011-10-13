@@ -35,10 +35,11 @@ initStore ah = Store { board = emptyBoard
                      }
   
 -----------------------------------------------------------
+-- Redraws the entire window (i.e. a drawBoard and a drawBottomLine)
 redraw :: Store -> Picture
 redraw store = Pictures $ [drawBoard (showOptions store) (board store), drawBottomLine store]
 
--- Draws the entire board
+-- Draws the entire board. The boolean indicates whether all options must be shown
 drawBoard :: Bool -> Board -> Picture
 drawBoard h board@(Board fields t)
     = Pictures $
@@ -46,7 +47,7 @@ drawBoard h board@(Board fields t)
       : (map (drawField h board) fields)
       ++ [drawLines]
 
--- Draws all outer lines
+-- Draws all outer lines. The boolean indicates whether all options must be shown
 drawLines :: Picture
 drawLines
     = Pictures $
@@ -198,42 +199,27 @@ handleEvent store (Prompt ("Save as", filename))
         
         store' = store {name=filename, process=DoingNothing, errorMsg=""}
 
---handleEvent store (MouseUp p) = (store, [infoPanel r, infoPanelVisible])
---    where
---        Store {board=board} = store
---        Board fields = board
---        oF = onField fields p
---        Just (Field x y s os v) = onField fields p
---       
---        r = if oF == Nothing then "Nothing"
---        else "Field " ++ (show x) ++ "," ++ (show y) ++ " sector " ++ (show s) ++ " value " ++ (show v)
---        
---handleEvent store (Panel 1000 _) = (store,[infoPanelInvisible])
+--- Mouse click on field
+handleEvent store (MouseUp p)
+    | oF == Nothing = (store, [])
+    | otherwise     = (store', [DrawPicture $ drawBottomLine store']) 
+                                   --[GraphPrompt ("Enter new value", "Value for field " ++ show x ++ "," ++ show y)])
+    where
+        Store {board=board} = store
+        Board fields t = board
+        oF = onField fields p
+        Just (Field x y s os v) = oF
+        store' = store {clickedField=onField fields p, process=EnteringValue} 
 
 --- Unhandled event handler
 handleEvent store input = ah store input
     where
         Store {additionalHandler=ah} = store
-
------------------------------------------------------------
-
--- Panel
---infoPanel x
---  = PanelCreate 
---    (x, 260, 45
---    ,[]
---    ,[ (1000 , "OK"      , Button     , 0  , 0 , 60, 20)
---     ]
---    )
---    
---infoPanelVisible   = PanelUpdate True  []
---infoPanelInvisible = PanelUpdate False []
-
-
+        
 -----------------------------------------------------------
 
 -- Draw the screen and install the event handler
-doShow ah = installEventHandler "U Kudos (tm)" handleEvent store startPic 10
+doShow ah = installEventHandler "sudo: ku!" handleEvent store startPic 10
     where
         store = initStore ah
         Store {board=board} = store
