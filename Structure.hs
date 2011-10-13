@@ -2,7 +2,10 @@ module Structure where
 
 import Prelude
 
-data Board = Board [Field]
+data Taip = Normal | Cross
+    deriving (Show, Eq)
+
+data Board = Board [Field] Taip
     deriving (Show, Eq)
 
 --                 Col    Row    Sector  Options  Definite
@@ -17,6 +20,6 @@ instance Ord Field where
   
   
 allOptions = ['1','2','3','4','5','6','7','8','9'] 
-emptyBoard = Board [ Field col row (secCalc col row) allOptions ' ' | col <- [0..8], row <- [0..8]]
+emptyBoard = Board [ Field col row (secCalc col row) allOptions ' ' | col <- [0..8], row <- [0..8]] Normal
 
 secCalc col row = (col `div` 3)+(row `div` 3)*3

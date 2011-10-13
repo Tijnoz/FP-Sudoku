@@ -38,7 +38,7 @@ redraw store = Pictures $ [drawBoard (board store), drawBottomLine store]
 
 -- Draws the entire board
 drawBoard :: Board -> Picture
-drawBoard (Board fields)
+drawBoard (Board fields t)
     = Pictures $
         Color white (rectangleSolid 800 564)
       : drawLines
@@ -94,7 +94,7 @@ drawBottomLine store
 
 -- Reads a board from a string
 readBoard :: String -> Board
-readBoard vs = Board (readBoardR vs 0 0)
+readBoard vs = Board (readBoardR vs 0 0) Normal
 
 readBoardR :: String -> Integer -> Integer -> [Field]
 readBoardR []        _ _ = []
@@ -104,7 +104,7 @@ readBoardR (v:vs)    c r = (Field c r (secCalc c r) allOptions v) : (readBoardR 
 
 -- Normalizes a board to a string
 writeBoard :: Board -> String
-writeBoard (Board fs) = unlines $ [
+writeBoard (Board fs t) = unlines $ [
                             concat $ [
                                 [ v | f@(Field c r s os v) <- fs, c == cs, r == rs ]
                                 | cs <- [0,1..m] 
