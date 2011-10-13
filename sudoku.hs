@@ -23,21 +23,43 @@ setSquare (Board fs) col row new = updateOptions (Board (map set fs))
             | otherwise
             = f
             
-updateOptions b@(Board fs) = (Board (map (updateOption b) fs))
-
-updateOption b (Field c r s os ' ') = (Field c r s os' ' ') 
+updateOptions b@(Board fs)
+    | b == b'   = b'
+    | otherwise = updateOptions b'
     where
-        -- Basic exclusions
-        os1 = allOptions \\ (getColD b c `union` (getRowD b r) `union` (getSecD b s)) 
-        -- Basic singleton (+23s op hardest...
-        sec = (getSec b s)
-        secOs = aggOptions sec
-        singleton = (os1 \\ secOs)
-        os' = if not (null singleton)
-              then singleton
-              else os1
+        --fs' = (map (updateFields b) fs)
+        --b'  = (Board fs')
+        
+        b' = updateFields b fs
+
+-- hard +singleton: 55s 
+-- hard -singleton: 45s
+updateFields b [] = b
+updateFields b@(Board cfs) (f@(Field c r s os ' '):fs) = updateFields (Board cfs') fs
+    where
+        -- Basic exclusions Haal alle opties weg die al in de kolom; rij of box staan.
+        os1 = os \\ (getColD b c `union` (getRowD b r) `union` (getSecD b s)) 
+        -- Basic singleton (+23s op hardest...) Als er maar 1 plek is voor een getal, maar er ook andere opties staan, moet dit getal w
+        os2 = checkSingleton (delete f (getSec b s)) os1
+        os3 = checkSingleton (delete f (getCol b c)) os2
+        os' = checkSingleton (delete f (getRow b r)) os3
+        
+        -- Update board with new field
+        f' = (Field c r s os' ' ') 
+        cfs' = (delete f cfs) ++ [f']
+ 
+updateFields b@(Board cfs) (f@(Field c r s _ def):fs) = updateFields (Board cfs') fs
+    where
+        cfs' = (delete f cfs) ++ [Field c r s [] def]
+
+checkSingleton fs os
+    | (length os) > 1 && not (null os') = os'
+    | otherwise                         = os
+    where
+        secOs = aggOptions fs
+        os'   = (os \\ secOs)
               
-updateOption b (Field c r s os def) = (Field c r s [] def)              
+           
     
 -- union on all fields
 aggOptions [] = []
@@ -58,6 +80,9 @@ validSet b col row new = if validMove b col row new
 getRow (Board fs) row = [ f | f@(Field c r s o d)<-fs, r==row ]
 getCol (Board fs) col = [ f | f@(Field c r s o d)<-fs, c==col ]
 getSec (Board fs) sec = [ f | f@(Field c r s o d)<-fs, s==sec ]
+getField (Board (f@(Field c r s o d):fs)) col row
+    | c == col && r == row  = f
+    | otherwise             = getField (Board fs) col row
             
 getRowD (Board fs) row = [ d | f@(Field c r s o d)<-fs, r==row ]
 getColD (Board fs) col = [ d | f@(Field c r s o d)<-fs, c==col ]
@@ -72,9 +97,22 @@ solve b@(Board fs)
     | otherwise        = concat $ map (solve . (validSet b col row)) os
     where
         fs' = sort(fs)
-        (Field col row sec os def) = findFirstUnsolved fs'
+        (Field col row _ os _) = findFirstUnsolved fs'
+        
+hint :: Board -> Board
+hint b@(Board fs)
+    | completeBoard fs = b
+    | unsolvable fs    = b
+    | length os == 1   = validSet b col row (head os)
+    | otherwise        = validSet b colb rowb defb
+    where
+        fs' = sort(fs)
+        (Field col row _ os _) = findFirstUnsolved fs'    
+        (Field colb rowb _ _ defb) = getField (head $ solve b) col row
       
-findFirstUnsolved (f@(Field _ _ _ os _):fs) = if (not (null os)) then f else findFirstUnsolved fs
+findFirstUnsolved (f@(Field _ _ _ os _):fs)
+    | (not (null os)) = f
+    | otherwise       = findFirstUnsolved fs
 
 completeBoard [] = True
 completeBoard ((Field _ _ _ _ def):fs) = not (def == ' ') && (completeBoard fs)
@@ -94,6 +132,13 @@ sudokuHandler store (KeyIn 'o') = (store', [DrawPicture $ redraw store'])
         sB    = solve board
         board' = if not (null sB) then head sB else board 
         err = if not (null sB)  then "" else "There is no solution."
+        store' = store {board=board', process=DoingNothing, errorMsg=err } 
+
+sudokuHandler store (KeyIn 'h') = (store', [DrawPicture $ redraw store'])
+    where
+        Store {board=board@(Board fs)} = store
+        board'   = hint board
+        err = if unsolvable fs || completeBoard fs then "There is no hint." else ""
         store' = store {board=board', process=DoingNothing, errorMsg=err } 
         
 sudokuHandler store (MouseUp p)
