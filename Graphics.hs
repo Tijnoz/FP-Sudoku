@@ -18,6 +18,7 @@ data Store = Store
   , process           :: Process
   , errorMsg          :: String
   , showOptions       :: Bool
+  , useBacktracking   :: Bool
   }
 
 boardTop = 250
@@ -32,6 +33,7 @@ initStore ah = Store { board = emptyBoard
                      , process = DoingNothing
                      , errorMsg = ""
                      , showOptions = False
+                     , useBacktracking = True
                      }
   
 -----------------------------------------------------------
@@ -83,12 +85,12 @@ drawBottomLine store
       [ Translate 0 (-300 + bottomLineHeight / 2) $ Color white $ rectangleSolid 800 bottomLineHeight
       , Color black $ Line [(-400,height1),(400,height1)] -- top
       , Color black $ Line [(-300,height1),(-300,-300)] -- left
-      , Color black $ Line [(140,height1),(140,-300)] -- right
+      , Color black $ Line [(145,height1),(145,-300)] -- right
       , Translate (-394) height2 $ Color red   $ Scale 0.11 0.11 $ Text $ (name store)
-      , Translate (-290) height2 $ Color black $ Scale 0.11 0.11 $ Text "[n]ew [s]ave (a[S]) [l]oad s[o]lve [h]int [x]sudoku op[t]ions"
+      , Translate (-290) height2 $ Color black $ Scale 0.09 0.09 $ Text "[n]ew [s]ave (a[S]) [l]oad s[o]lve [h]int [x]sudoku op[t]ions [b]acktracking"
       , if not (null (errorMsg store)) -- (process store) == DoingNothing && 
-           then Translate 150 height2 $ Color red   $ Scale 0.11 0.11 $ Text (errorMsg store)
-           else Translate 150 height2 $ Color black $ Scale 0.11 0.11 $ Text actionText
+           then Translate 155 height2 $ Color red   $ Scale 0.11 0.11 $ Text (errorMsg store)
+           else Translate 155 height2 $ Color black $ Scale 0.11 0.11 $ Text actionText
       ]
     where
         height1 = -300 + bottomLineHeight
@@ -153,6 +155,12 @@ handleEvent store (KeyIn 't') = (store', [DrawPicture $ redraw store'])
     where
         Store {showOptions=showOptions} = store
         store' = store {process=DoingNothing, errorMsg="", showOptions=(not showOptions)}
+        
+--- Toggle backtracking
+handleEvent store (KeyIn 'b') = (store', [DrawPicture $ drawBottomLine store'])
+    where
+        Store {useBacktracking=useBacktracking} = store
+        store' = store {process=DoingNothing, errorMsg="", useBacktracking=(not useBacktracking)}
 
 
 --- Create new Sudoku board

@@ -33,7 +33,8 @@ validMove b@(Board _ t) col row new = col >= 0 && col < 9 &&               -- co
                                       not  (new `elem` (getRowD b row)) && -- not already in row
                                       not  (new `elem` (getColD b col)) && -- not already in column
                                       not  (new `elem` (getSecD b (secCalc col row))) && -- not already in sector
-                                      (t /= Cross || not (new `elem` (getDiaD b (diaCalc col row)))) -- not already in diagonal (if board type is Cross)
+                                      (t /= Cross || not (new `elem` (getDiaD b (diaCalc col row)))) && -- not already in diagonal (if board type is Cross)
+                                      (t /= Cross || not (bothDia col row) || not (new `elem` (getDiaD b 2))) -- not already in 2nd diagonal if both diagonals apply
 
 -- Check if given type change is possible for the given board
 validTypeChange :: Board -> Taip -> Bool
@@ -68,7 +69,6 @@ getSec (Board fs t) sec = [ f | f@(Field _ _ s _ _)<-fs, s==sec ]
 getDia :: Board -> Integer -> [Field]
 getDia (Board fs t) dia = [ f | f@(Field c r _ _ _)<-fs, case dia of 1 -> c == r
                                                                      2 -> (c+r) == 8 
-                                                                     3 -> c == r || (c+r) == 8
                                                                      _ -> False ]
 --- Gets all definitives of the given column, row, sector or diagonal
 getColD :: Board -> Integer -> [Char]
@@ -80,7 +80,6 @@ getSecD (Board fs t) sec = [ d | f@(Field _ _ s _ d)<-fs, s==sec ]
 getDiaD :: Board -> Integer -> [Char]
 getDiaD (Board fs t) dia = [ d | f@(Field c r _ _ d)<-fs, case dia of 1 -> c == r
                                                                       2 -> (c+r) == 8 
-                                                                      3 -> c == r || (c+r) == 8
                                                                       _ -> False ]
 
 -- Union on all field options of the given fields
@@ -114,10 +113,13 @@ updateFields b@(Board cfs t) (f@(Field c r s os ' '):fs) = updateFields (Board c
         col = (delete f (getCol b c))
         row = (delete f (getRow b r))
         dia = (delete f (getDia b (diaCalc c r)))
+        usedia2 = bothDia c r
+        dia2 = (delete f (getDia b (diaCalc c r)))
         
         os' = 
         -- 3b. Additional naked pair for cross Sudoku.
                 (cond nakedPairs (t == Cross) dia)
+              . (cond nakedPairs (t == Cross && usedia2) dia2)
         -- 3a. Naked pairs. Removes options when there are two other fields in a
         --     r/c/s with an identical options set of size two.
               . (nakedPairs sec)
@@ -126,6 +128,7 @@ updateFields b@(Board cfs t) (f@(Field c r s os ' '):fs) = updateFields (Board c
               
         -- 2b. Additional singleton for cross Sudoku.
               . (cond singles (t == Cross) dia)
+              . (cond singles (t == Cross && usedia2) dia2)
         -- 2a. Basic singleton. When there's only one spot for a value in a r/c/s,
         --     but there are more possibilities for this spot, that value is the
         --     possibility for this spot.
@@ -150,8 +153,9 @@ updateFields b@(Board cfs t) (f@(Field c r s _ def):fs) = updateFields (Board cf
 -- board is given only because this contains some rules
 possibles :: Board -> Field -> [Char] -> [Char]
 possibles b@(Board _ t) f@(Field c r s _ _) os
-    | t == Cross  = os \\ (getColD b c `union` (getRowD b r) `union` (getSecD b s) `union` (getDiaD b (diaCalc c r))) 
-    | otherwise   = os \\ (getColD b c `union` (getRowD b r) `union` (getSecD b s)) 
+    | t == Cross && bothDia c r  = os \\ (getColD b c `union` (getRowD b r) `union` (getSecD b s) `union` (getDiaD b 1) `union` (getDiaD b 2))
+    | t == Cross                 = os \\ (getColD b c `union` (getRowD b r) `union` (getSecD b s) `union` (getDiaD b (diaCalc c r))) 
+    | otherwise                  = os \\ (getColD b c `union` (getRowD b r) `union` (getSecD b s)) 
         
 -- When one option in the list of options of a field (os) does not occur in the options 
 -- of other fields (fs), that option is the option for this field
@@ -184,19 +188,20 @@ cond op t fs os
 -- Solves a board
 -- May backtrack in the case that there are more then one option for a particular field
 -- (which is the otherwise) and returns all possible options.
-solve :: Board -> [Board]
-solve b@(Board fs t)
+solve :: Bool -> Board -> [Board]
+solve bt b@(Board fs t)
     | completeBoard fs = [b]
     | unsolvable fs    = []
-    | length os == 1   = solve (validSet b col row (head os))
-    | otherwise        = concat $ map (solve . (validSet b col row)) os
+    | length os == 1   = solve bt (validSet b col row (head os))
+    | not bt           = []
+    | otherwise        = concat $ map ((solve bt) . (validSet b col row)) os
     where
         fs' = sort(fs)
         (Field col row _ os _) = findFirstUnsolved fs'
 
 -- Gets a hint; returns the board where the hint is set (or the same board if no solutions are found)
-hint :: Board -> Board
-hint b@(Board fs t)
+hint :: Bool -> Board -> Board
+hint bt b@(Board fs t)
     | completeBoard fs || unsolvable fs    = b
     | length os == 1                       = validSet b col row (head os)
     | otherwise                            = validSet b colb rowb defb
@@ -205,7 +210,7 @@ hint b@(Board fs t)
         -- Check for only one option
         (Field col row _ os _) = findFirstUnsolved fs'
         -- Otherwise: get first field that is solved by the solver (possibly using backtracking)
-        (Field colb rowb _ _ defb) = getField (head $ solve b) col row
+        (Field colb rowb _ _ defb) = getField (head $ solve bt b) col row
 
 -- Returns the first unsolved field
 findFirstUnsolved :: [Field] -> Field
@@ -240,16 +245,17 @@ sudokuHandler :: Store -> Input -> (Store,[Output])
 sudokuHandler store (KeyIn 'o') = (store', [DrawPicture $ redraw store'])
     where
         Store {board=board} = store
-        sB = solve board
+        sB = solve (useBacktracking store) board
         board' = if not (null sB) then head sB else board 
-        err = if not (null sB) then if null $ tail sB then "" else "There's more than one solution." else "There is no solution."
+        err = if not (null sB) then if null $ tail sB then "" else "There's more than one solution." 
+              else if (useBacktracking store) then "There is no solution." else "No solution. Try backtracking."
         store' = store {board=board', process=DoingNothing, errorMsg=err} 
 
 --- Hint
 sudokuHandler store (KeyIn 'h') = (store', [DrawPicture $ redraw store'])
     where
         Store {board=board@(Board fs t)} = store
-        board' = hint board
+        board' = hint (useBacktracking store) board
         err = if unsolvable fs || completeBoard fs then "There is no hint." else ""
         store' = store {board=board', process=DoingNothing, errorMsg=err} 
         
