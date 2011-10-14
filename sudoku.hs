@@ -204,13 +204,15 @@ hint :: Bool -> Board -> Board
 hint bt b@(Board fs t)
     | completeBoard fs || unsolvable fs    = b
     | length os == 1                       = validSet b col row (head os)
+    | null solutions                       = b
     | otherwise                            = validSet b colb rowb defb
     where
         fs' = sort(fs)
         -- Check for only one option
         (Field col row _ os _) = findFirstUnsolved fs'
         -- Otherwise: get first field that is solved by the solver (possibly using backtracking)
-        (Field colb rowb _ _ defb) = getField (head $ solve bt b) col row
+        solutions = solve bt b
+        (Field colb rowb _ _ defb) = getField (head $ solutions) col row
 
 -- Returns the first unsolved field
 findFirstUnsolved :: [Field] -> Field
@@ -256,7 +258,7 @@ sudokuHandler store (KeyIn 'h') = (store', [DrawPicture $ redraw store'])
     where
         Store {board=board@(Board fs t)} = store
         board' = hint (useBacktracking store) board
-        err = if unsolvable fs || completeBoard fs then "There is no hint." else ""
+        err = if board == board' then "There is no hint." else ""
         store' = store {board=board', process=DoingNothing, errorMsg=err} 
         
 --- Toggle X-Sudoku
