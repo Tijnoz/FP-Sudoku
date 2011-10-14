@@ -228,7 +228,7 @@ handleEvent store input = ah store input
 -----------------------------------------------------------
 
 -- Draw the screen and install the event handler
-doShow ah = installEventHandler "sudo: ku!" handleEvent store startPic 10
+doShow ah = installEventHandler "Sudo Ku!" handleEvent store startPic 10
     where
         store = initStore ah
         Store {board=board} = store
