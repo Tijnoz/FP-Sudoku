@@ -110,15 +110,28 @@ updateFields b [] = b
 --- the following is only for empty fields
 updateFields b@(Board cfs t) (f@(Field c r s os ' '):fs) = updateFields (Board cfs' t) fs 
     where
+        sec = (delete f (getSec b s))
+        col = (delete f (getCol b c))
+        row = (delete f (getRow b r))
+        dia = (delete f (getDia b (diaCalc c r)))
+        
         os' = 
+        -- 3b. Additional naked pair for cross Sudoku.
+                (cond nakedPairs (t == Cross) dia)
+        -- 3a. Naked pairs. Removes options when there are two other fields in a
+        --     r/c/s with an identical options set of size two.
+              . (nakedPairs sec)
+              . (nakedPairs col)
+              . (nakedPairs row)
+              
         -- 2b. Additional singleton for cross Sudoku.
-                (singlesCond (t == Cross) (delete f (getDia b (diaCalc c r))))
+              . (cond singles (t == Cross) dia)
         -- 2a. Basic singleton. When there's only one spot for a value in a r/c/s,
         --     but there are more possibilities for this spot, that value is the
         --     possibility for this spot.
-              . (singles (delete f (getSec b s)))
-              . (singles (delete f (getCol b c)))
-              . (singles (delete f (getRow b r)))
+              . (singles sec)
+              . (singles col)
+              . (singles row)
         -- 1.  Basic exclusions. Remove all options already in column, sector or row 
               . (possibles b f)
               $ os
@@ -150,11 +163,23 @@ singles fs os
         secOs = aggOptions fs
         os'   = (os \\ secOs)
 
--- Additional singles method that only executes when t is true
-singlesCond :: Bool -> [Field] -> [Char] -> [Char]
-singlesCond t fs os
-   | t         = singles fs os
+-- Removes all options that are from a naked pair in the given fieldset. A naked pair is 
+-- a pair of two fields with the same option list of length 2. These options can't be set
+-- for all other fields in the range. 
+nakedPairs :: [Field] -> [Char] -> [Char]
+nakedPairs fs os
+    | null cand || length cand < 2 = os -- do not evaluate nub and concats when there's no need
+    | otherwise                    = os' 
+    where
+        cand = [fos | (Field _ _ _ fos fd) <- fs , length fos == 2 , fd == ' ']
+        os' = os \\ concat (cand \\ nub cand)
+
+-- Additional method that only executes op with parameters fs and os when t is true
+cond :: ([Field] -> [Char] -> [Char]) -> Bool -> [Field] -> [Char] -> [Char]
+cond op t fs os
+   | t         = op fs os
    | otherwise = os
+
 
 -- Solves a board
 -- May backtrack in the case that there are more then one option for a particular field
