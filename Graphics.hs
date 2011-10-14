@@ -86,8 +86,9 @@ drawBottomLine store
       , Color black $ Line [(-400,height1),(400,height1)] -- top
       , Color black $ Line [(-300,height1),(-300,-300)] -- left
       , Color black $ Line [(145,height1),(145,-300)] -- right
-      , Translate (-394) height2 $ Color red   $ Scale 0.11 0.11 $ Text $ (name store)
+      , Translate (-394) height2 $ Color blue  $ Scale 0.11 0.11 $ Text $ (name store)
       , Translate (-290) height2 $ Color black $ Scale 0.09 0.09 $ Text "[n]ew [s]ave (a[S]) [l]oad s[o]lve [h]int [x]sudoku op[t]ions [b]acktracking"
+      , Translate (61)   height2 $ Color red   $ Scale 0.09 0.09 $ Text (if (useBacktracking store) then "" else  "[b]acktracking") --make backtracking red
       , if not (null (errorMsg store)) -- (process store) == DoingNothing && 
            then Translate 155 height2 $ Color red   $ Scale 0.11 0.11 $ Text (errorMsg store)
            else Translate 155 height2 $ Color black $ Scale 0.11 0.11 $ Text actionText
