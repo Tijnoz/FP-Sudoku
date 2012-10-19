@@ -53,10 +53,10 @@ drawBoard h board@(Board fields t)
 drawLines :: Picture
 drawLines
     = Pictures $
-        [ Line [(squareLeft x, boardTop), (squareLeft x, boardTop-9*50)] | x <- [0..9] ]
-      ++ [ Line [(boardLeft, squareTop y), (boardLeft+9*50, squareTop y)] | y <- [0..9] ]
-      ++ [ Line [(squareLeft (x*3) - 1, boardTop), (squareLeft (x*3) - 1, boardTop-9*50)] | x <- [1..2] ]
-      ++ [ Line [(boardLeft, squareTop (y*3) + 1), (boardLeft+9*50, squareTop (y*3) + 1)] | y <- [1..2] ]
+        [ Line [(fromIntegral (squareLeft x), fromIntegral boardTop), (fromIntegral (squareLeft x), fromIntegral (boardTop-9*50))] | x <- [0..9] ]
+      ++ [ Line [(fromIntegral boardLeft, fromIntegral (squareTop y)), (fromIntegral (boardLeft+9*50), fromIntegral (squareTop y))] | y <- [0..9] ]
+      ++ [ Line [(fromIntegral (squareLeft (x*3) - 1), fromIntegral boardTop), (fromIntegral (squareLeft (x*3) - 1), fromIntegral (boardTop-9*50))] | x <- [1..2] ]
+      ++ [ Line [(fromIntegral boardLeft, fromIntegral (squareTop (y*3) + 1)), (fromIntegral (boardLeft+9*50), fromIntegral (squareTop (y*3) + 1))] | y <- [1..2] ]
 
 -- Draws the contents of one field
 drawField :: Bool -> Board -> Field -> Picture
